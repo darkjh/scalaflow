@@ -119,8 +119,8 @@ object WordCount extends App {
   p.apply(TextIO.Read.named("ReadLines").from(options.getInput()))
     .apply(new CountWords())
     .apply(TextIO.Write.named("WriteCounts")
-    .to(options.getOutput())
-    .withNumShards(options.getNumShards()))
+      .to(options.getOutput())
+      .withNumShards(options.getNumShards()))
 
   p.run
 }
