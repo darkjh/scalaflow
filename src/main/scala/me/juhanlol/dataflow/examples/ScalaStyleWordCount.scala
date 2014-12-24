@@ -1,15 +1,53 @@
 package me.juhanlol.dataflow.examples
 
 import com.google.cloud.dataflow.sdk.Pipeline
+
 import com.google.cloud.dataflow.sdk.io.TextIO
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory
-import com.google.cloud.dataflow.sdk.transforms.{PTransform, Count, ParDo}
+import com.google.cloud.dataflow.sdk.transforms.{DoFn, PTransform, Count, ParDo}
+import com.google.cloud.dataflow.sdk.values.{KV, PCollection}
 
 
 /**
  * Created by darkjh on 12/22/14.
  */
 object ScalaStyleWordCount extends App {
+  implicit def mapFuncToPTransform[I, O](func: I => O)
+  : PTransform[PCollection[_ <: I], PCollection[O]] = {
+    ParDo.of(new SDoFn[I, O]() {
+      override def processElement(c: ProcessContext): Unit = {
+        c.output(func(c.element()))
+      }
+    })
+  }
+
+  implicit def flatMapFuncToPTransform[I, O](func: I => Iterable[O])
+//  : PTransform[PCollection[_ <: I], PCollection[O]] = {
+  : ParDo.Bound[I, O] = {
+    ParDo.of(new SDoFn[I, O]() {
+      override def processElement(c: ProcessContext): Unit = {
+        val outputs = func(c.element())
+        for (o <- outputs) {
+          c.output(o)
+        }
+      }
+    })
+  }
+
+  implicit def kvToTuple2[I, O](kv: KV[I, O]): (I, O) = {
+    (kv.getKey, kv.getValue)
+  }
+
+  def extractWords(line: String): Iterable[String] = {
+    // Split the line into words.
+    line.split("[^a-zA-Z']+")
+  }
+
+  def formatCounts(count: (String, java.lang.Long)): String = {
+    count._1 + "\t" + count._2.toString
+  }
+
+
   val options = PipelineOptionsFactory
     .fromArgs(args)
     .withValidation()
@@ -21,7 +59,9 @@ object ScalaStyleWordCount extends App {
     .from(options.getInput()))
 
   // transformations
-  val words = input.apply(ParDo.of(new ExtractWordsFn()))
+  val trans = ParDo.of(new ExtractWordsFn())
+  val trans2 = flatMapFuncToPTransform(extractWords)
+  val words = input.apply(trans2)
   val wordCounts = words.apply(Count.perElement())
   val results = wordCounts.apply(ParDo.of(new FormatCountsFn()))
 
