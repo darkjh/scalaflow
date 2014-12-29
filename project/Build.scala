@@ -15,6 +15,7 @@ object ScalaFlowBuild extends Build {
     libraryDependencies ++= Seq(
       "org.scalatest" %% "scalatest" % "2.2.1" % "test",
       "org.scala-lang" % "scala-reflect" % "2.10.4",
+      "com.twitter" %% "chill" % "0.5.1",
       "com.google.cloud.dataflow" % "google-cloud-dataflow-java-sdk-all" % "manual_build"
     )
   )
