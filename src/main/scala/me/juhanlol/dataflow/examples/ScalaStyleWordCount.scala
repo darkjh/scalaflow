@@ -14,17 +14,18 @@ import scala.reflect.ClassTag
  * Created by darkjh on 12/22/14.
  */
 object ScalaStyleWordCount extends App {
-  implicit def mapFuncToPTransform[I: ClassTag, O: ClassTag](func: I => O)
+  implicit def mapFuncToPTransform[I: ClassTag, O: ClassTag]
+  (func: I => O)
   : PTransform[PCollection[_ <: I], PCollection[O]] = {
     ParDo.of(new SDoFn[I, O]() {
       override def processElement(c: ProcessContext): Unit = {
         c.output(func(c.element()))
       }
-    })
+    }).named("ScalaMapTransformed")
   }
 
-  implicit def flatMapFuncToPTransform[I: ClassTag, O: ClassTag](func: I => Iterable[O])
-//  : PTransform[PCollection[_ <: I], PCollection[O]] = {
+  implicit def flatMapFuncToPTransform[I: ClassTag, O: ClassTag]
+  (func: I => Iterable[O])
   : ParDo.Bound[I, O] = {
     ParDo.of(new SDoFn[I, O]() {
       override def processElement(c: ProcessContext): Unit = {
@@ -33,23 +34,25 @@ object ScalaStyleWordCount extends App {
           c.output(o)
         }
       }
-    }).named("ScalaTransformed")
+    }).named("ScalaFlatMapTransformed")
   }
 
   implicit def kvToTuple2[I, O](kv: KV[I, O]): (I, O) = {
     (kv.getKey, kv.getValue)
   }
 
+  // Transform functions
+  /** Split a line into words */
   def extractWords(line: String): Iterable[String] = {
-    // Split the line into words.
     line.split("[^a-zA-Z']+")
   }
 
-  def formatCounts(count: (String, java.lang.Long)): String = {
+  /** Format result string from counts */
+  def formatCounts(count: KV[String, java.lang.Long]): String = {
     count._1 + "\t" + count._2.toString
   }
 
-
+  // pipeline definition
   val options = PipelineOptionsFactory
     .fromArgs(args)
     .withValidation()
@@ -61,19 +64,9 @@ object ScalaStyleWordCount extends App {
     .from(options.getInput()))
 
   // transformations
-  val trans = ParDo.of(new ExtractWordsFn())
-//  println(trans.getFn.getInputTypeToken)
-//  println(trans.getFn.getOutputTypeToken)
-  println("============================")
-  val trans2 = flatMapFuncToPTransform(extractWords)
-  println(trans2.getFn)
-  println(trans2.getFn.getClass)
-//  println(trans2.getFn.getInputTypeToken)
-//  println(trans2.getFn.getOutputTypeToken)
-
-  val words = input.apply(trans2)
+  val words = input.apply(flatMapFuncToPTransform(extractWords))
   val wordCounts = words.apply(Count.perElement())
-  val results = wordCounts.apply(ParDo.of(new FormatCountsFn()))
+  val results = wordCounts.apply(mapFuncToPTransform(formatCounts))
 
   // output
   results.apply(TextIO.Write.named("WriteCounts")
