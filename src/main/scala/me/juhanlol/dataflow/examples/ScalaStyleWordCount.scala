@@ -4,17 +4,17 @@ import com.google.cloud.dataflow.sdk.Pipeline
 
 import com.google.cloud.dataflow.sdk.io.TextIO
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory
-import com.google.cloud.dataflow.sdk.transforms.{DoFn, PTransform, Count, ParDo}
+import com.google.cloud.dataflow.sdk.transforms.{SDoFn, PTransform, Count, ParDo}
 import com.google.cloud.dataflow.sdk.values.{KV, PCollection}
 
-import com.google.common.reflect.TypeToken
-import scala.reflect.runtime.universe._
+import scala.reflect.ClassTag
+
 
 /**
  * Created by darkjh on 12/22/14.
  */
 object ScalaStyleWordCount extends App {
-  implicit def mapFuncToPTransform[I, O](func: I => O)
+  implicit def mapFuncToPTransform[I: ClassTag, O: ClassTag](func: I => O)
   : PTransform[PCollection[_ <: I], PCollection[O]] = {
     ParDo.of(new SDoFn[I, O]() {
       override def processElement(c: ProcessContext): Unit = {
@@ -23,7 +23,7 @@ object ScalaStyleWordCount extends App {
     })
   }
 
-  implicit def flatMapFuncToPTransform[I: TypeTag, O: TypeTag](func: I => Iterable[O])
+  implicit def flatMapFuncToPTransform[I: ClassTag, O: ClassTag](func: I => Iterable[O])
 //  : PTransform[PCollection[_ <: I], PCollection[O]] = {
   : ParDo.Bound[I, O] = {
     ParDo.of(new SDoFn[I, O]() {
@@ -32,20 +32,6 @@ object ScalaStyleWordCount extends App {
         for (o <- outputs) {
           c.output(o)
         }
-      }
-
-      override protected def getInputTypeToken = {
-        val t = typeOf[I]
-        val m = runtimeMirror(getClass.getClassLoader)
-        val clazz = m.runtimeClass(t)
-        TypeToken.of(clazz).asInstanceOf[TypeToken[I]]
-      }
-
-      override protected def getOutputTypeToken = {
-        val t = typeOf[O]
-        val m = runtimeMirror(getClass.getClassLoader)
-        val clazz = m.runtimeClass(t)
-        TypeToken.of(clazz).asInstanceOf[TypeToken[O]]
       }
     }).named("ScalaTransformed")
   }
@@ -76,14 +62,14 @@ object ScalaStyleWordCount extends App {
 
   // transformations
   val trans = ParDo.of(new ExtractWordsFn())
-  println(trans.getFn.getInputTypeToken)
-  println(trans.getFn.getOutputTypeToken)
+//  println(trans.getFn.getInputTypeToken)
+//  println(trans.getFn.getOutputTypeToken)
   println("============================")
   val trans2 = flatMapFuncToPTransform(extractWords)
   println(trans2.getFn)
   println(trans2.getFn.getClass)
-  println(trans2.getFn.getInputTypeToken)
-  println(trans2.getFn.getOutputTypeToken)
+//  println(trans2.getFn.getInputTypeToken)
+//  println(trans2.getFn.getOutputTypeToken)
 
   val words = input.apply(trans2)
   val wordCounts = words.apply(Count.perElement())

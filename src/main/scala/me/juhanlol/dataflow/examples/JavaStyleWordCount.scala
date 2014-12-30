@@ -24,12 +24,6 @@ class OutputFactory extends DefaultValueFactory[String] {
 }
 
 
-abstract class SDoFn[I, O] extends DoFn[I, O] {
-  type Context = DoFn[I, O]#Context
-  type ProcessContext = DoFn[I, O]#ProcessContext
-}
-
-
 /** A DoFn that tokenizes lines of text into individual words. */
 class ExtractWordsFn extends SDoFn[String, String] {
   var emptyLines: Aggregator[java.lang.Long] = _
