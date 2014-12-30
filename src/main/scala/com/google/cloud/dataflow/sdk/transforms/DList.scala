@@ -22,15 +22,15 @@ object DList {
   }
 }
 
-class TextDList(pattern: String, name: Option[String] = None)
+class TextDList(val pattern: String, val name: Option[String] = None)
   extends DList[String](null)
 
-class MappedDList[O: ClassTag, I: ClassTag](prev: DList[I], f: I => O)
+class MappedDList[I: ClassTag, O: ClassTag](val prev: DList[I], val f: I => O)
   extends DList[O](prev)
 
-class FlatMappedDList[U: ClassTag, T: ClassTag]
-(prev: DList[T], f: T => TraversableOnce[U])
-  extends DList[U](prev)
+class FlatMappedDList[I: ClassTag, O: ClassTag]
+(val prev: DList[I], val f: I => TraversableOnce[O])
+  extends DList[O](prev)
 
-class FilteredDList[T: ClassTag](prev: DList[T], f: T => Boolean)
+class FilteredDList[T: ClassTag](val prev: DList[T], val f: T => Boolean)
   extends DList[T](prev)
