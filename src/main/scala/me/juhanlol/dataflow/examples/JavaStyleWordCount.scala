@@ -103,9 +103,6 @@ trait WordCountOptions extends PipelineOptions {
 }
 
 
-/**
- * Created by darkjh on 12/19/14.
- */
 object WordCount extends App {
   val options = PipelineOptionsFactory.fromArgs(args).withValidation().as(classOf[WordCountOptions])
   val p = Pipeline.create(options)
