@@ -6,7 +6,6 @@ import com.google.cloud.dataflow.sdk.options._
 import com.google.cloud.dataflow.sdk.util.gcsfs.GcsPath
 import com.google.cloud.dataflow.sdk.transforms._
 import com.google.cloud.dataflow.sdk.values.{PCollection, KV}
-import me.juhanlol.dataflow.SDoFn
 
 
 /**

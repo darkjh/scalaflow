@@ -1,6 +1,5 @@
-package me.juhanlol.dataflow
+package com.google.cloud.dataflow.sdk.transforms
 
-import com.google.cloud.dataflow.sdk.transforms.DoFn
 import com.google.common.reflect.TypeToken
 
 import scala.reflect.ClassTag

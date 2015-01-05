@@ -4,7 +4,7 @@ import com.google.cloud.dataflow.sdk.Pipeline
 import com.google.cloud.dataflow.sdk.coders.{VarIntCoder, CoderRegistry, Coder}
 import com.google.cloud.dataflow.sdk.io.TextIO
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory
-import com.google.cloud.dataflow.sdk.transforms.{Create, GroupByKey, PTransform, ParDo}
+import com.google.cloud.dataflow.sdk.transforms._
 import com.google.cloud.dataflow.sdk.values.{KV, PCollection}
 import com.google.common.reflect.TypeToken
 import com.twitter.chill.ClosureCleaner
