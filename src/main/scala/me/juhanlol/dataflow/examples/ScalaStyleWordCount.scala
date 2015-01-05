@@ -22,8 +22,7 @@ object ScalaStyleWordCount extends App {
   val p = Pipeline.create(options)
 
   // input
-  val input = new DList(p.apply(TextIO.Read.named("ReadLines")
-    .from(options.getInput())))
+  val input = DList.text(options.getInput(), Some(p))
 
   // transformations
   val words = input.flatMap(line => line.split("[^a-zA-Z']+"))
