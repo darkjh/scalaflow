@@ -6,6 +6,7 @@ import com.google.cloud.dataflow.sdk.io.TextIO
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory
 import com.google.cloud.dataflow.sdk.transforms._
 import com.google.cloud.dataflow.sdk.values.KV
+import me.juhanlol.dataflow.DList
 
 
 object ScalaStyleWordCount extends App {

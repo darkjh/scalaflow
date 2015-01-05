@@ -1,10 +1,11 @@
-package com.google.cloud.dataflow.sdk.transforms
+package me.juhanlol.dataflow
 
 import com.google.cloud.dataflow.sdk.io.TextIO
+import com.google.cloud.dataflow.sdk.transforms.{GroupByKey, PTransform, ParDo}
 import com.google.cloud.dataflow.sdk.values.{KV, PCollection}
+import com.twitter.chill.ClosureCleaner
 
 import scala.reflect.ClassTag
-import com.twitter.chill.ClosureCleaner
 
 
 class DList[T: ClassTag](val native: PCollection[T]) {
