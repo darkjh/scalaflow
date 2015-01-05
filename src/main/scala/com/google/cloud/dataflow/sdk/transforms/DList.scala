@@ -1,7 +1,7 @@
 package com.google.cloud.dataflow.sdk.transforms
 
 import com.google.cloud.dataflow.sdk.io.TextIO
-import com.google.cloud.dataflow.sdk.values.PCollection
+import com.google.cloud.dataflow.sdk.values.{KV, PCollection}
 
 import scala.reflect.ClassTag
 import com.twitter.chill.ClosureCleaner
@@ -49,12 +49,29 @@ class DList[T: ClassTag](val native: PCollection[T]) {
     new DList[T](native.apply(trans))
   }
 
+  def by[K](f: T => K): PairDList[K, T] = {
+    val func = DList.clean(f)
+    val keyed = this.map(elem => KV.of(func(elem), elem))
+    new PairDList[K, T](keyed.native)
+  }
+
+  def groupBy[K](f: T => K): PairDList[K, java.lang.Iterable[T]] = {
+    val keyed = this.map(elem => KV.of(f(elem), elem))
+    new PairDList(keyed.native.apply(GroupByKey.create[K, T]()))
+  }
+
   def persist(path: String, name: Option[String] = None): Unit = {
     val trans = TextIO.Write.named(name.getOrElse("Persist")).to(path)
     // TODO how to remove this cast ???
     native.asInstanceOf[PCollection[String]].apply(trans)
   }
 }
+
+
+class PairDList[K, V](override val native: PCollection[KV[K, V]])
+  extends DList[KV[K, V]](native) {
+}
+
 
 object DList {
   def clean[F <: AnyRef](f: F): F = {
