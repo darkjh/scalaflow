@@ -1,11 +1,9 @@
 package me.juhanlol.dataflow.examples
 
-import com.google.cloud.dataflow.sdk.Pipeline
-
 import com.google.cloud.dataflow.sdk.options.PipelineOptionsFactory
 import com.google.cloud.dataflow.sdk.transforms._
 import com.google.cloud.dataflow.sdk.values.KV
-import me.juhanlol.dataflow.DList
+import me.juhanlol.dataflow.DataflowJob
 
 
 object ScalaStyleWordCount extends App {
@@ -18,10 +16,10 @@ object ScalaStyleWordCount extends App {
     .fromArgs(args)
     .withValidation()
     .as(classOf[WordCountOptions])
-  val p = Pipeline.create(options)
+  val job = new DataflowJob(options)
 
   // input
-  val input = DList.text(options.getInput(), Some(p))
+  val input = job.text(options.getInput())
 
   // transformations
   val words = input.flatMap(line => line.split("[^a-zA-Z']+"))
@@ -31,5 +29,5 @@ object ScalaStyleWordCount extends App {
   // output
   results.persist(options.getOutput(), Some("writeCounts"))
 
-  p.run
+  job.run
 }

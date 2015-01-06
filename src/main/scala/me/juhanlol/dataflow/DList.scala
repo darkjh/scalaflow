@@ -83,32 +83,8 @@ object DList {
   implicit def pcollectionToDList[T: ClassTag](p: PCollection[T]): DList[T] = new DList[T](p)
   implicit def dlistToPCollection[T: ClassTag](d: DList[T]): PCollection[T] = d.native
 
-  val coders = new CoderRegistry
-  coders.registerStandardCoders()
-  // TODO compat scala/java types
-  coders.registerCoder(classOf[Int], classOf[VarIntCoder])
-
   def clean[F <: AnyRef](f: F): F = {
     ClosureCleaner(f)
     f
   }
-
-  def of[T: ClassTag](iter: Iterable[T], pipeline: Option[Pipeline] = None): DList[T] = {
-    // get the pipeline or create a default one
-    val p = pipeline.getOrElse(Pipeline.create(PipelineOptionsFactory.create()))
-    // get the concrete type
-    val clazz = implicitly[ClassTag[T]].runtimeClass
-    // get the coder
-    val coder = DList.coders.getDefaultCoder(TypeToken.of(clazz)).asInstanceOf[Coder[T]]
-    val pcollection = p.apply(Create.of(JavaConversions.asJavaIterable(iter))).setCoder(coder)
-    new DList(pcollection)
-  }
-
-  def text(path: String, pipeline: Option[Pipeline] = None): DList[String] = {
-    // get the pipeline or create a default one
-    val p = pipeline.getOrElse(Pipeline.create(PipelineOptionsFactory.create()))
-    new DList(p.apply(TextIO.Read.named("TextFrom %s".format(path)).from(path)))
-  }
-
-  // TODO avro
 }
