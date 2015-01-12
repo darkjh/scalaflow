@@ -1,7 +1,7 @@
 package me.juhanlol.dataflow
 
 import com.google.cloud.dataflow.sdk.Pipeline
-import com.google.cloud.dataflow.sdk.coders.{VarIntCoder, CoderRegistry, Coder}
+import com.google.cloud.dataflow.sdk.coders.{VarIntCoder, CoderRegistry => JCoderRegistry, Coder}
 import com.google.cloud.dataflow.sdk.io.TextIO
 import com.google.cloud.dataflow.sdk.options.PipelineOptions
 import com.google.cloud.dataflow.sdk.transforms.Create
@@ -12,7 +12,7 @@ import scala.reflect.ClassTag
 
 class DataflowJob(val pipeline: Pipeline) {
   // setup custom coder registry
-  val coders = new CoderRegistry
+  val coders = new JCoderRegistry
   coders.registerStandardCoders()
   // TODO compat scala/java types
   // TODO once for all coder, kryo serialization ???
