@@ -4,6 +4,8 @@ import com.google.cloud.dataflow.sdk.testing.DataflowAssert
 import com.google.cloud.dataflow.sdk.values.KV
 import org.scalatest.FunSuite
 
+import scala.collection.JavaConversions._
+
 
 class DListTest extends FunSuite {
   test("CreationFromList") {
@@ -50,5 +52,17 @@ class DListTest extends FunSuite {
       KV.of(2, 1), KV.of(4, 3), KV.of(10, 9)
     )
     job.run
+  }
+
+  test("GroupBy") {
+    val job = TestJob()
+    val data = job.of(List("hello", "hi", "apple", "banana"))
+    val result = data.groupBy(_.charAt(0).toString)
+
+    DataflowAssert.that(result).containsInAnyOrder(
+      KV.of("h", List("hello", "hi")),
+      KV.of("a", List("apple")),
+      KV.of("b", List("banana"))
+    )
   }
 }

@@ -63,10 +63,11 @@ class DList[T: TypeTag](val native: PCollection[T],
     new PairDList[K, T](next, coderRegistry)
   }
 
-//  def groupBy[K](f: T => K): PairDList[K, java.lang.Iterable[T]] = {
-//    val keyed = this.map(elem => KV.of(f(elem), elem))
-//    new PairDList(keyed.native.apply(GroupByKey.create[K, T]()))
-//  }
+  def groupBy[K: TypeTag](f: T => K): PairDList[K, java.lang.Iterable[T]] = {
+    val keyed = this.map(elem => KV.of(f(elem), elem))
+    val next = keyed.native.apply(GroupByKey.create())
+    new PairDList(next, coderRegistry)
+  }
 
   def persist(path: String, name: Option[String] = None): Unit = {
     val trans = TextIO.Write.named(name.getOrElse("Persist")).to(path)
