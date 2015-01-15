@@ -1,9 +1,12 @@
 package me.juhanlol.dataflow
 
 import java.lang.reflect.Method
+import java.net.URI
 
+import com.google.api.services.bigquery.model.TableRow
 import com.google.cloud.dataflow.sdk.coders._
-import com.google.cloud.dataflow.sdk.values.KV
+import com.google.cloud.dataflow.sdk.values.{TimestampedValue, KV}
+import org.joda.time.Instant
 import scala.collection.mutable
 import scala.reflect.runtime.universe._
 
@@ -25,12 +28,26 @@ object CoderFactory {
 class CoderRegistry {
   val coderMap = mutable.Map[Type, CoderFactory]()
 
+  // register common types
+  // TODO byte[] coder ???
   registerCoder[Int](classOf[VarIntCoder])
-  registerCoder[Integer](classOf[VarIntCoder])
+  registerCoder[java.lang.Integer](classOf[VarIntCoder])
+  registerCoder[Long](classOf[VarLongCoder])
+  registerCoder[java.lang.Long](classOf[VarLongCoder])
+  registerCoder[Double](classOf[DoubleCoder])
+  registerCoder[java.lang.Double](classOf[DoubleCoder])
   registerCoder[String](classOf[StringUtf8Coder])
   registerCoder[java.lang.String](classOf[StringUtf8Coder])
+  registerCoder[Instant](classOf[InstantCoder])
+  registerCoder[java.lang.Void](classOf[VoidCoder])
+  registerCoder[URI](classOf[URICoder])
+  registerCoder[TimestampedValue[_]](classOf[TimestampedValue.TimestampedValueCoder[_]])
+
+  registerCoder[TableRow](classOf[TableRowJsonCoder])
 
   registerCoder[KV[_, _]](classOf[KvCoder[_, _]])
+  registerCoder[java.lang.Iterable[_]](classOf[IterableCoder[_]])
+  registerCoder[java.util.List[_]](classOf[ListCoder[_]])
 
   def registerCoder[T: TypeTag](coderClazz: Class[_]): Unit = {
     val resolvedInfo = TypeResolver.resolve[T]()
