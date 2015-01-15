@@ -23,7 +23,7 @@ object ScalaStyleWordCount extends App {
 
   // transformations
   val words = input.flatMap(line => line.split("[^a-zA-Z']+"))
-  val wordCounts = words.apply(Count.perElement())
+  val wordCounts = words.applyTransform(Count.perElement())
   val results = wordCounts.map(count => count._1 + "\t" + count._2.toString)
 
   // output

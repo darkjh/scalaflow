@@ -10,7 +10,7 @@ import scala.reflect.runtime.universe._
 
 class DList[T: TypeTag](val native: PCollection[T],
                         val coderRegistry: CoderRegistry) {
-  def apply[U: TypeTag](trans: PTransform[PCollection[T], PCollection[U]])
+  def applyTransform[U: TypeTag](trans: PTransform[PCollection[T], PCollection[U]])
   : DList[U] = {
     new DList[U](native.apply(trans), this.coderRegistry)
   }
