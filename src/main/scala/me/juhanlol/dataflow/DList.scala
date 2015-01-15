@@ -5,28 +5,32 @@ import com.google.cloud.dataflow.sdk.transforms._
 import com.google.cloud.dataflow.sdk.values.{KV, PCollection}
 import com.twitter.chill.ClosureCleaner
 
-import scala.reflect.ClassTag
+import scala.reflect.runtime.universe._
 
 
-class DList[T: ClassTag](val native: PCollection[T]) {
-  def apply[U: ClassTag](trans: PTransform[PCollection[T], PCollection[U]])
+class DList[T: TypeTag](val native: PCollection[T],
+                        val coderRegistry: CoderRegistry) {
+  def apply[U: TypeTag](trans: PTransform[PCollection[T], PCollection[U]])
   : DList[U] = {
-    new DList[U](native.apply(trans))
+    new DList[U](native.apply(trans), this.coderRegistry)
   }
 
-  def map[U: ClassTag](f: T => U): DList[U] = {
+  def map[U: TypeTag](f: T => U): DList[U] = {
     val func = DList.clean(f)
+    val coder = coderRegistry.getDefaultCoder[U]
     val trans = ParDo.of(new SDoFn[T, U]() {
       override def processElement(c: ProcessContext): Unit = {
         c.output(func(c.element()))
       }
     }).named("ScalaMapTransformed")
+    val next = native.apply(trans).setCoder(coder)
 
-    new DList[U](native.apply(trans))
+    new DList[U](next, this.coderRegistry)
   }
 
-  def flatMap[U: ClassTag](f: T => TraversableOnce[U]): DList[U] = {
+  def flatMap[U: TypeTag](f: T => TraversableOnce[U]): DList[U] = {
     val func = DList.clean(f)
+    val coder = coderRegistry.getDefaultCoder[U]
     val trans = ParDo.of(new SDoFn[T, U]() {
       override def processElement(c: ProcessContext): Unit = {
         val outputs = func(c.element())
@@ -35,7 +39,8 @@ class DList[T: ClassTag](val native: PCollection[T]) {
         }
       }
     }).named("ScalaFlatMapTransformed")
-    new DList[U](native.apply(trans))
+    val next = native.apply(trans).setCoder(coder)
+    new DList[U](next, this.coderRegistry)
   }
 
   def filter(f: T => Boolean): DList[T] = {
@@ -47,19 +52,21 @@ class DList[T: ClassTag](val native: PCollection[T]) {
         }
       }
     }).named("ScalaFilterTransformed")
-    new DList[T](native.apply(trans))
+    new DList[T](native.apply(trans), this.coderRegistry)
   }
 
-  def by[K](f: T => K): PairDList[K, T] = {
+  def by[K: TypeTag](f: T => K): PairDList[K, T] = {
     val func = DList.clean(f)
+    val coder = coderRegistry.getDefaultCoder[KV[K, T]]
     val keyed = this.map(elem => KV.of(func(elem), elem))
-    new PairDList[K, T](keyed.native)
+    val next = keyed.native.setCoder(coder)
+    new PairDList[K, T](next, coderRegistry)
   }
 
-  def groupBy[K](f: T => K): PairDList[K, java.lang.Iterable[T]] = {
-    val keyed = this.map(elem => KV.of(f(elem), elem))
-    new PairDList(keyed.native.apply(GroupByKey.create[K, T]()))
-  }
+//  def groupBy[K](f: T => K): PairDList[K, java.lang.Iterable[T]] = {
+//    val keyed = this.map(elem => KV.of(f(elem), elem))
+//    new PairDList(keyed.native.apply(GroupByKey.create[K, T]()))
+//  }
 
   def persist(path: String, name: Option[String] = None): Unit = {
     val trans = TextIO.Write.named(name.getOrElse("Persist")).to(path)
@@ -69,14 +76,16 @@ class DList[T: ClassTag](val native: PCollection[T]) {
 }
 
 
-class PairDList[K, V](override val native: PCollection[KV[K, V]])
-  extends DList[KV[K, V]](native) {
+class PairDList[K: TypeTag, V: TypeTag]
+(override val native: PCollection[KV[K, V]],
+ override val coderRegistry: CoderRegistry)
+  extends DList[KV[K, V]](native, coderRegistry) {
 }
 
 
 object DList {
-  implicit def pcollectionToDList[T: ClassTag](p: PCollection[T]): DList[T] = new DList[T](p)
-  implicit def dlistToPCollection[T: ClassTag](d: DList[T]): PCollection[T] = d.native
+//  implicit def pcollectionToDList[T: ClassTag](p: PCollection[T]): DList[T] = new DList[T](p)
+  implicit def dlistToPCollection[T: TypeTag](d: DList[T]): PCollection[T] = d.native
 
   def clean[F <: AnyRef](f: F): F = {
     ClosureCleaner(f)
