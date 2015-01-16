@@ -7,14 +7,28 @@ import com.twitter.chill.ClosureCleaner
 
 import scala.reflect.runtime.universe._
 
-
+/**
+ * DList (Distributed List) is the main abstraction of Scalaflow,
+ * it's similar to Spark's RDD. Operations on DList is transformed into
+ * Dataflow's transformation and could be executed locally or in
+ * Google's managed cloud service
+ *
+ * @tparam T Type contained in DList, should have a corresponding coder
+ *           registered
+ */
 class DList[T: TypeTag](val native: PCollection[T],
                         val coderRegistry: CoderRegistry) {
+  /**
+   * Apply an existing PTransform to the DList (eg. Count.perElement())
+   */
   def applyTransform[U: TypeTag](trans: PTransform[PCollection[T], PCollection[U]])
   : DList[U] = {
     new DList[U](native.apply(trans), this.coderRegistry)
   }
 
+  /**
+   * Map the specified function on the DList
+   */
   def map[U: TypeTag](f: T => U): DList[U] = {
     val func = DList.clean(f)
     val coder = coderRegistry.getDefaultCoder[U]
@@ -28,6 +42,9 @@ class DList[T: TypeTag](val native: PCollection[T],
     new DList[U](next, this.coderRegistry)
   }
 
+  /**
+   * FlatMap (map then flatten) the specified function on the DList
+   */
   def flatMap[U: TypeTag](f: T => TraversableOnce[U]): DList[U] = {
     val func = DList.clean(f)
     val coder = coderRegistry.getDefaultCoder[U]
@@ -43,6 +60,9 @@ class DList[T: TypeTag](val native: PCollection[T],
     new DList[U](next, this.coderRegistry)
   }
 
+  /**
+   * Return a new DList with elements that satisfy the predicate
+   */
   def filter(f: T => Boolean): DList[T] = {
     val func = DList.clean(f)
     val trans = ParDo.of(new SDoFn[T, T]() {
@@ -69,6 +89,10 @@ class DList[T: TypeTag](val native: PCollection[T],
     new PairDList(next, coderRegistry)
   }
 
+  /**
+   * Persist the DList on storage
+   * Only text format is supported for the moment
+   */
   def persist(path: String, name: Option[String] = None): Unit = {
     val trans = TextIO.Write.named(name.getOrElse("Persist")).to(path)
     // TODO how to remove this cast ???
@@ -85,7 +109,6 @@ class PairDList[K: TypeTag, V: TypeTag]
 
 
 object DList {
-//  implicit def pcollectionToDList[T: ClassTag](p: PCollection[T]): DList[T] = new DList[T](p)
   implicit def dlistToPCollection[T: TypeTag](d: DList[T]): PCollection[T] = d.native
 
   def clean[F <: AnyRef](f: F): F = {
