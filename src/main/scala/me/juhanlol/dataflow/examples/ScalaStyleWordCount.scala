@@ -7,10 +7,6 @@ import me.juhanlol.dataflow.DataflowJob
 
 
 object ScalaStyleWordCount extends App {
-  implicit def kvToTuple2[I, O](kv: KV[I, O]): (I, O) = {
-    (kv.getKey, kv.getValue)
-  }
-
   // pipeline definition
   val options = PipelineOptionsFactory
     .fromArgs(args)
@@ -24,7 +20,8 @@ object ScalaStyleWordCount extends App {
   // transformations
   val words = input.flatMap(line => line.split("[^a-zA-Z']+"))
   val wordCounts = words.applyTransform(Count.perElement())
-  val results = wordCounts.map(count => count._1 + "\t" + count._2.toString)
+  val results = wordCounts.map(
+    count => count.getKey + "\t" + count.getValue.toString)
 
   // output
   results.persist(options.getOutput(), Some("writeCounts"))
