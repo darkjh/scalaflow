@@ -1,6 +1,6 @@
 package me.juhanlol.dataflow
 
-import java.lang.reflect.Method
+import java.lang.reflect.{Modifier, Method}
 import java.net.URI
 
 import com.google.api.services.bigquery.model.TableRow
@@ -55,9 +55,41 @@ class CoderRegistry {
 
     val factoryMethodArgTypes = Array.fill(numTypeArgs)(classOf[Coder[_]])
 
-    // TODO error check
-    val factoryMethod = coderClazz.getDeclaredMethod(
-      "of", factoryMethodArgTypes:_*)
+    var factoryMethod: Method = null
+    try {
+      factoryMethod = coderClazz.getDeclaredMethod(
+        "of", factoryMethodArgTypes: _*)
+    } catch {
+      case exn @ (_: NoSuchMethodException | _: SecurityException) =>
+        throw new IllegalArgumentException(
+            "cannot register Coder " + coderClazz + ": "
+            + "does not have an accessible method named 'of' with "
+            + numTypeArgs + " arguments of Coder type", exn)
+    }
+
+    if (!Modifier.isStatic(factoryMethod.getModifiers)) {
+      throw new IllegalArgumentException(
+          "cannot register Coder " + coderClazz + ": "
+          + "method named 'of' with " + numTypeArgs
+          + " arguments of Coder type is not static")
+    }
+    if (!coderClazz.isAssignableFrom(factoryMethod.getReturnType)) {
+      throw new IllegalArgumentException(
+          "cannot register Coder " + coderClazz + ": "
+          + "method named 'of' with " + numTypeArgs
+          + " arguments of Coder type does not return a " + coderClazz)
+    }
+    try {
+      if (!factoryMethod.isAccessible()) {
+        factoryMethod.setAccessible(true)
+      }
+    } catch {
+      case exn: SecurityException =>
+        throw new IllegalArgumentException(
+            "cannot register Coder " + coderClazz + ": "
+            + "method named 'of' with " + numTypeArgs
+            + " arguments of Coder type is not accessible", exn)
+    }
 
     coderMap.put(resolvedInfo.raw, CoderFactory.of(coderClazz, factoryMethod))
   }
