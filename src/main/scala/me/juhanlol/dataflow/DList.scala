@@ -105,6 +105,10 @@ class PairDList[K: TypeTag, V: TypeTag]
 (override val native: PCollection[KV[K, V]],
  override val coderRegistry: CoderRegistry)
   extends DList[KV[K, V]](native, coderRegistry) {
+
+  def countByKey(): PairDList[K, Long] = {
+    this.map(kv => kv.getKey).applyTransform(Count.perElement()).asInstanceOf[PairDList[K, Long]]
+  }
 }
 
 
