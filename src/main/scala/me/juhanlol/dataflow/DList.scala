@@ -75,18 +75,18 @@ class DList[T: TypeTag](val native: PCollection[T],
     new DList[T](native.apply(trans), this.coderRegistry)
   }
 
-  def by[K: TypeTag](f: T => K): PairDList[K, T] = {
+  def by[K: TypeTag](f: T => K): DList[KV[K, T]] = {
     val func = DList.clean(f)
     val coder = coderRegistry.getDefaultCoder[KV[K, T]]
     val keyed = this.map(elem => KV.of(func(elem), elem))
     val next = keyed.native.setCoder(coder)
-    new PairDList[K, T](next, coderRegistry)
+    new DList(next, coderRegistry)
   }
 
-  def groupBy[K: TypeTag](f: T => K): PairDList[K, java.lang.Iterable[T]] = {
+  def groupBy[K: TypeTag](f: T => K): DList[KV[K, java.lang.Iterable[T]]] = {
     val keyed = this.map(elem => KV.of(f(elem), elem))
     val next = keyed.native.apply(GroupByKey.create())
-    new PairDList(next, coderRegistry)
+    new DList(next, coderRegistry)
   }
 
   /**
@@ -101,19 +101,21 @@ class DList[T: TypeTag](val native: PCollection[T],
 }
 
 
-class PairDList[K: TypeTag, V: TypeTag]
-(override val native: PCollection[KV[K, V]],
- override val coderRegistry: CoderRegistry)
-  extends DList[KV[K, V]](native, coderRegistry) {
-
-  def countByKey(): PairDList[K, Long] = {
-    this.map(kv => kv.getKey).applyTransform(Count.perElement()).asInstanceOf[PairDList[K, Long]]
+class PairDListFunctions[K: TypeTag, V: TypeTag](self: DList[KV[K, V]]) {
+  def countByKey(): DList[KV[K, java.lang.Long]] = {
+    self.map(kv => kv.getKey).applyTransform(Count.perElement())
   }
 }
 
 
 object DList {
-  implicit def dlistToPCollection[T: TypeTag](d: DList[T]): PCollection[T] = d.native
+  implicit def dlistToPCollection[T: TypeTag]
+  (d: DList[T]): PCollection[T] = d.native
+
+  implicit def dlistToPairDListFunctions[K: TypeTag, V: TypeTag]
+  (dlist: DList[KV[K, V]]): PairDListFunctions[K, V] = {
+    new PairDListFunctions(dlist)
+  }
 
   def clean[F <: AnyRef](f: F): F = {
     ClosureCleaner(f)
