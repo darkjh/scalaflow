@@ -9,6 +9,7 @@ import com.google.cloud.dataflow.sdk.values.{TimestampedValue, KV}
 import org.joda.time.Instant
 import scala.collection.mutable
 import scala.reflect.runtime.universe._
+import scala.reflect.runtime.universe
 
 trait CoderFactory {
   def create[_](typeArgumentCoders: List[Coder[_]]): Coder[_]
@@ -95,10 +96,16 @@ class CoderRegistry {
   }
 
   def getDefaultCoder[T: TypeTag]: Coder[T] = {
-    // TODO support arbitrary level of type arguments
-    val resolvedInfo = TypeResolver.resolve[T]()
-    val typeArgsCoders = resolvedInfo.actualTypeArgs.map(
-      t => coderMap(t.erasure).create(Nil))
-    coderMap(resolvedInfo.raw).create(typeArgsCoders).asInstanceOf[Coder[T]]
+    val tpe = typeOf[T]
+    getDefaultCoder(tpe).asInstanceOf[Coder[T]]
+  }
+
+  def getDefaultCoder(tpe: Type): Coder[_] = {
+    tpe match {
+      case TypeRef(_, _, args) =>
+        val typeArgCoders = args.map(getDefaultCoder(_))
+        coderMap(tpe.erasure).create(typeArgCoders)
+      case _ => coderMap(tpe.erasure).create(Nil)
+    }
   }
 }
