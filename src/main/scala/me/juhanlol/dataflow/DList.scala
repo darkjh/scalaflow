@@ -2,8 +2,11 @@ package me.juhanlol.dataflow
 
 import com.google.cloud.dataflow.sdk.io.TextIO
 import com.google.cloud.dataflow.sdk.transforms._
-import com.google.cloud.dataflow.sdk.values.{KV, PCollection}
+import com.google.cloud.dataflow.sdk.transforms.join.{CoGbkResult, CoGroupByKey, KeyedPCollectionTuple}
+import com.google.cloud.dataflow.sdk.values.{TupleTag, KV, PCollection}
 import com.twitter.chill.ClosureCleaner
+
+import scala.collection.JavaConverters._
 
 import scala.reflect.runtime.universe._
 
@@ -104,6 +107,36 @@ class DList[T: TypeTag](val native: PCollection[T],
 class PairDListFunctions[K: TypeTag, V: TypeTag](self: DList[KV[K, V]]) {
   def countByKey(): DList[KV[K, java.lang.Long]] = {
     self.map(kv => kv.getKey).applyTransform(Count.perElement())
+  }
+
+  def join[W: TypeTag](that: DList[KV[K, W]]): DList[KV[K, KV[V, W]]] = {
+    val tv = new TupleTag[V]()
+    val tw = new TupleTag[W]()
+    val coGroupResult = KeyedPCollectionTuple.of(tv, self.native)
+      .and(tw, that.native)
+      .apply(CoGroupByKey.create())
+
+    val result = coGroupResult.apply(ParDo.of(
+      new SDoFn[KV[K, CoGbkResult], KV[K, KV[V, W]]] {
+        override def processElement(
+          c: DoFn[KV[K, CoGbkResult],
+            KV[K, KV[V, W]]]#ProcessContext): Unit = {
+          val elem = c.element()
+          val k = elem.getKey
+          val vs = elem.getValue.getAll(tv).asScala
+          val ws = elem.getValue.getAll(tw).asScala
+          for {
+            v <- vs if v != null
+            w <- ws if w != null
+          } {
+            c.output(KV.of(k, KV.of(v, w)))
+          }
+        }
+      }
+    ))
+    val coder = self.coderRegistry.getDefaultCoder[KV[K, KV[V, W]]]
+    result.setCoder(coder)
+    new DList(result, self.coderRegistry)
   }
 }
 

@@ -78,4 +78,16 @@ class DListTest extends FunSuite {
       KV.of("c", 3l)
     )
   }
+
+  test("Join") {
+    val job = TestJob()
+    val left = job.of(List(KV.of("a", 1), KV.of("b", 2)))
+    val right = job.of(List(KV.of("b", 2), KV.of("c", 3)))
+
+    val result = left.join(right)
+
+    DataflowAssert.that(result).containsInAnyOrder(
+      KV.of("b", KV.of(2, 2))
+    )
+  }
 }
